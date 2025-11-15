@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code - Multi-Session Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            width: 350px;
+            background-color: #252526;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #sidebar-header {
+            padding: 15px;
+            background-color: #2d2d30;
+            border-bottom: 1px solid #333;
+            font-weight: bold;
+            color: #11a8cd;
+        }
+
+        #projects-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* Project Tree Styles */
+        .project {
+            margin-bottom: 5px;
+        }
+
+        .project-header {
+            padding: 8px 10px;
+            cursor: pointer;
+            background-color: #2d2d30;
+            border: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .project-header:hover {
+            background-color: #37373d;
+        }
+
+        .project-header.expanded {
+            background-color: #094771;
+            border-color: #007acc;
+        }
+
+        .project-toggle {
+            font-size: 10px;
+            width: 12px;
+            transition: transform 0.2s;
+        }
+
+        .project-toggle.expanded {
+            transform: rotate(90deg);
+        }
+
+        .project-name {
+            flex: 1;
+            font-size: 0.85em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .project-count {
+            font-size: 0.75em;
+            color: #808080;
+        }
+
+        .sessions-list {
+            display: none;
+            padding-left: 20px;
+            margin-top: 5px;
+        }
+
+        .sessions-list.visible {
+            display: block;
+        }
+
+        .session-item {
+            padding: 6px 10px;
+            cursor: pointer;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            margin-bottom: 3px;
+            font-size: 0.8em;
+            transition: background-color 0.2s;
+        }
+
+        .session-item:hover {
+            background-color: #2d2d30;
+        }
+
+        .session-item.selected {
+            background-color: #094771;
+            border-color: #007acc;
+        }
+
+        .session-item.agent {
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        .session-time {
+            color: #808080;
+            font-size: 0.85em;
+        }
+
+        .session-id {
+            color: #569cd6;
+            font-size: 0.75em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .loading {
+            padding: 20px;
+            text-align: center;
+            color: #808080;
+            font-style: italic;
+        }
+
+        .error {
+            padding: 20px;
+            color: #f48771;
+        }
+
+        /* Main Chat Area */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #chat-header {
+            padding: 15px 20px;
+            background-color: #2d2d30;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #current-session-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .session-label {
+            color: #808080;
+            font-size: 0.85em;
+        }
+
+        .session-value {
+            color: #11a8cd;
+            font-size: 0.9em;
+        }
+
+        #reset-btn {
+            background-color: #cd3131;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 0.85em;
+            transition: background-color 0.2s;
+        }
+
+        #reset-btn:hover {
+            background-color: #f14c4c;
+        }
+
+        #terminal {
+            flex: 1;
+            padding: 15px 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+            background-color: #1e1e1e;
+        }
+
+        #input-container {
+            padding: 15px 20px;
+            background-color: #2d2d30;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+
+        #input {
+            flex: 1;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            color: #d4d4d4;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        #input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        /* Chat Message Styles */
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 3px solid transparent;
+        }
+
+        .chat-message.user {
+            border-left-color: #569cd6;
+            background-color: rgba(86, 156, 214, 0.1);
+        }
+
+        .chat-message.assistant {
+            border-left-color: #4ec9b0;
+            background-color: rgba(78, 201, 176, 0.1);
+        }
+
+        .message-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.85em;
+        }
+
+        .message-header.user {
+            color: #569cd6;
+        }
+
+        .message-header.assistant {
+            color: #4ec9b0;
+        }
+
+        .message-content {
+            color: #d4d4d4;
+        }
+
+        .tool-use {
+            margin-top: 5px;
+            padding: 5px 10px;
+            background-color: rgba(255, 165, 0, 0.1);
+            border-left: 2px solid #e5e510;
+            font-size: 0.8em;
+            color: #808080;
+        }
+
+        .timestamp {
+            font-size: 0.7em;
+            color: #606060;
+            margin-top: 3px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4e4e4e;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <div id="sidebar-header">
+                Projects & Sessions
+            </div>
+            <div id="projects-container">
+                <div class="loading">Loading projects...</div>
+            </div>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div id="main">
+            <div id="chat-header">
+                <div id="current-session-info">
+                    <span class="session-label">Session:</span>
+                    <span class="session-value" id="session-id">-</span>
+                </div>
+                <button id="reset-btn" title="Reset Session">New Session</button>
+            </div>
+            <div id="terminal"></div>
+            <div id="input-container">
+                <input type="text" id="input" placeholder="Type a message..." autofocus />
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== State Management =====
+        let currentSessionId = null;
+        let currentProjectId = null;
+        let projects = [];
+        let expandedProjects = new Set();
+
+        // ===== DOM Elements =====
+        const projectsContainer = document.getElementById('projects-container');
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('input');
+        const sessionIdDisplay = document.getElementById('session-id');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // ===== ANSI to HTML Converter =====
+        function ansiToHtml(text) {
+            let html = text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            html = html.replace(/\x1b\[38;2;(\d+);(\d+);(\d+)m/g, '<span style="color: rgb($1, $2, $3)">');
+            html = html.replace(/\x1b\[48;2;(\d+);(\d+);(\d+)m/g, '<span style="background-color: rgb($1, $2, $3)">');
+
+            const fgColors = {
+                '30': '#000000', '31': '#cd3131', '32': '#0dbc79', '33': '#e5e510',
+                '34': '#2472c8', '35': '#bc3fbc', '36': '#11a8cd', '37': '#e5e5e5'
+            };
+            const brightFgColors = {
+                '90': '#808080', '91': '#f14c4c', '92': '#23d18b', '93': '#f5f543',
+                '94': '#3b8eea', '95': '#d670d6', '96': '#29b8db', '97': '#e5e5e5'
+            };
+
+            for (const [code, color] of Object.entries(fgColors)) {
+                html = html.replace(new RegExp(`\\x1b\\[${code}m`, 'g'), `<span style="color: ${color}">`);
+            }
+            for (const [code, color] of Object.entries(brightFgColors)) {
+                html = html.replace(new RegExp(`\\x1b\\[${code}m`, 'g'), `<span style="color: ${color}">`);
+            }
+
+            html = html.replace(/\x1b\[0?m/g, '</span>');
+
+            const openSpans = (html.match(/<span/g) || []).length;
+            const closeSpans = (html.match(/<\/span>/g) || []).length;
+            if (openSpans > closeSpans) {
+                html += '</span>'.repeat(openSpans - closeSpans);
+            }
+
+            return html;
+        }
+
+        // ===== Format Time =====
+        function formatTime(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ===== API Functions =====
+        async function loadProjects() {
+            try {
+                const response = await fetch('/api/projects');
+                const data = await response.json();
+                projects = data.projects || [];
+                renderProjects();
+            } catch (error) {
+                projectsContainer.innerHTML = `<div class="error">Failed to load projects: ${error.message}</div>`;
+            }
+        }
+
+        async function loadSessions(projectId) {
+            try {
+                console.log('[Frontend] Loading sessions for project:', projectId);
+                const encodedProjectId = encodeURIComponent(projectId);
+                console.log('[Frontend] Encoded project ID:', encodedProjectId);
+                const response = await fetch(`/api/projects/${encodedProjectId}/sessions`);
+                console.log('[Frontend] Response status:', response.status);
+                const data = await response.json();
+                console.log('[Frontend] Received sessions:', data.sessions?.length || 0);
+                return data.sessions || [];
+            } catch (error) {
+                console.error('[Frontend] Failed to load sessions:', error);
+                return [];
+            }
+        }
+
+        async function loadSessionHistory(projectId, sessionId) {
+            try {
+                console.log('[Frontend] Loading history for session:', sessionId);
+                const encodedProjectId = encodeURIComponent(projectId);
+                const encodedSessionId = encodeURIComponent(sessionId);
+                const response = await fetch(`/api/sessions/${encodedProjectId}/${encodedSessionId}/history`);
+                console.log('[Frontend] History response status:', response.status);
+                const data = await response.json();
+                console.log('[Frontend] Received messages:', data.messages?.length || 0);
+                return data;
+            } catch (error) {
+                console.error('[Frontend] Failed to load session history:', error);
+                return null;
+            }
+        }
+
+        async function switchSession(sessionId) {
+            try {
+                const response = await fetch('/api/sessions/switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId })
+                });
+                const data = await response.json();
+                return data.success;
+            } catch (error) {
+                console.error('Failed to switch session:', error);
+                return false;
+            }
+        }
+
+        // ===== Render Functions =====
+        function renderProjects() {
+            if (projects.length === 0) {
+                projectsContainer.innerHTML = '<div class="loading">No projects found</div>';
+                return;
+            }
+
+            projectsContainer.innerHTML = projects.map(project => {
+                const isExpanded = expandedProjects.has(project.id);
+                return `
+                    <div class="project" data-project-id="${project.id}">
+                        <div class="project-header ${isExpanded ? 'expanded' : ''}" onclick="toggleProject('${project.id}')">
+                            <span class="project-toggle ${isExpanded ? 'expanded' : ''}">▶</span>
+                            <span class="project-name" title="${project.name}">${project.name}</span>
+                            <span class="project-count">${project.mainSessionCount}</span>
+                        </div>
+                        <div class="sessions-list ${isExpanded ? 'visible' : ''}" id="sessions-${project.id}">
+                            <div class="loading">Loading sessions...</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleProject(projectId) {
+            console.log('[Frontend] Toggle project:', projectId);
+            if (expandedProjects.has(projectId)) {
+                expandedProjects.delete(projectId);
+                renderProjects();
+            } else {
+                expandedProjects.add(projectId);
+                renderProjects(); // Re-render to show expanded state
+                // Load sessions for this project
+                const sessions = await loadSessions(projectId);
+                console.log('[Frontend] Rendering', sessions.length, 'sessions for project');
+                renderSessions(projectId, sessions);
+            }
+        }
+
+        function renderSessions(projectId, sessions) {
+            const container = document.getElementById(`sessions-${projectId}`);
+            console.log('[Frontend] renderSessions - container found:', !!container, 'sessions:', sessions.length);
+            if (!container) {
+                console.error('[Frontend] Container not found for project:', projectId);
+                return;
+            }
+
+            if (sessions.length === 0) {
+                container.innerHTML = '<div class="loading">No sessions found</div>';
+                return;
+            }
+
+            container.innerHTML = sessions.map(session => {
+                const isSelected = session.id === currentSessionId;
+                const agentClass = session.isAgent ? 'agent' : '';
+                const selectedClass = isSelected ? 'selected' : '';
+                const displayId = session.id.substring(0, 20) + (session.id.length > 20 ? '...' : '');
+
+                return `
+                    <div class="session-item ${agentClass} ${selectedClass}"
+                         onclick="selectSession('${projectId}', '${session.id}')">
+                        <div class="session-time">${formatTime(session.modified)}</div>
+                        <div class="session-id">${displayId}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function selectSession(projectId, sessionId) {
+            console.log('Selecting session:', projectId, sessionId);
+
+            // Load session history
+            terminal.innerHTML = '<div class="loading">Loading session history...</div>';
+
+            const historyData = await loadSessionHistory(projectId, sessionId);
+
+            if (!historyData) {
+                terminal.innerHTML = '<div class="error">Failed to load session history</div>';
+                return;
+            }
+
+            // Switch to this session
+            const success = await switchSession(sessionId);
+
+            if (!success) {
+                terminal.innerHTML = '<div class="error">Failed to switch session</div>';
+                return;
+            }
+
+            currentSessionId = sessionId;
+            currentProjectId = projectId;
+            sessionIdDisplay.textContent = sessionId.substring(0, 8);
+
+            // Render messages
+            renderChatHistory(historyData.messages);
+
+            // Update UI
+            renderProjects();
+        }
+
+        function renderChatHistory(messages) {
+            terminal.innerHTML = '';
+
+            if (messages.length === 0) {
+                terminal.innerHTML = '<div class="loading">No messages in this session yet</div>';
+                return;
+            }
+
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `chat-message ${msg.role}`;
+
+                const header = document.createElement('div');
+                header.className = `message-header ${msg.role}`;
+                header.textContent = msg.role === 'user' ? 'User' : 'Assistant';
+
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                content.textContent = msg.content;
+
+                messageDiv.appendChild(header);
+                messageDiv.appendChild(content);
+
+                // Show tool uses if any
+                if (msg.toolUses && msg.toolUses.length > 0) {
+                    msg.toolUses.forEach(tool => {
+                        const toolDiv = document.createElement('div');
+                        toolDiv.className = 'tool-use';
+                        toolDiv.textContent = `🔧 ${tool.name}`;
+                        messageDiv.appendChild(toolDiv);
+                    });
+                }
+
+                // Add timestamp
+                if (msg.timestamp) {
+                    const timestampDiv = document.createElement('div');
+                    timestampDiv.className = 'timestamp';
+                    timestampDiv.textContent = formatTime(msg.timestamp);
+                    messageDiv.appendChild(timestampDiv);
+                }
+
+                terminal.appendChild(messageDiv);
+            });
+
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // ===== Session Management =====
+        async function updateSessionId() {
+            try {
+                const response = await fetch('/session');
+                const data = await response.json();
+                if (data.sessionId) {
+                    currentSessionId = data.sessionId;
+                    sessionIdDisplay.textContent = data.sessionId.substring(0, 8);
+                }
+            } catch (error) {
+                console.error('Failed to fetch session ID:', error);
+            }
+        }
+
+        resetBtn.addEventListener('click', async () => {
+            try {
+                await fetch('/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ command: '', resetSession: true })
+                });
+                currentSessionId = null;
+                sessionIdDisplay.textContent = '-';
+                terminal.innerHTML = '<span style="color: #e5e510;">[New session started]</span>\n';
+                renderProjects(); // Re-render to clear selection
+            } catch (error) {
+                console.error('Failed to reset session:', error);
+            }
+        });
+
+        // ===== Chat Input =====
+        input.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter') {
+                const command = input.value;
+                if (!command.trim()) return;
+
+                input.value = '';
+
+                // Add user message to terminal
+                const userMsg = document.createElement('div');
+                userMsg.className = 'chat-message user';
+                userMsg.innerHTML = `
+                    <div class="message-header user">User</div>
+                    <div class="message-content">${command.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                `;
+                terminal.appendChild(userMsg);
+                terminal.scrollTop = terminal.scrollHeight;
+
+                try {
+                    const response = await fetch('/run', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ command })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let assistantMsg = null;
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const text = decoder.decode(value, { stream: true });
+
+                        // Extract session ID if present
+                        const sessionMatch = text.match(/\[Session ID: ([^\]]+)\]/);
+                        if (sessionMatch) {
+                            currentSessionId = sessionMatch[1];
+                            sessionIdDisplay.textContent = sessionMatch[1].substring(0, 8);
+                        }
+
+                        // Append to terminal (streaming)
+                        if (!assistantMsg) {
+                            assistantMsg = document.createElement('div');
+                            assistantMsg.className = 'chat-message assistant';
+                            assistantMsg.innerHTML = `
+                                <div class="message-header assistant">Assistant</div>
+                                <div class="message-content"></div>
+                            `;
+                            terminal.appendChild(assistantMsg);
+                        }
+
+                        const contentDiv = assistantMsg.querySelector('.message-content');
+                        contentDiv.innerHTML += ansiToHtml(text);
+                        terminal.scrollTop = terminal.scrollHeight;
+                    }
+
+                    await updateSessionId();
+                } catch (error) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'chat-message';
+                    errorMsg.innerHTML = `<span style="color: #f48771;">Error: ${error.message}</span>`;
+                    terminal.appendChild(errorMsg);
+                    terminal.scrollTop = terminal.scrollHeight;
+                }
+            }
+        });
+
+        // ===== Initialize =====
+        updateSessionId();
+        setInterval(updateSessionId, 5000);
+        loadProjects();
+    </script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+{
+  "version": "1.0",
+  "generatedAt": "2025-11-15T15:45:17.993Z",
+  "statistics": {
+    "totalFiles": 413,
+    "totalEvents": 14649,
+    "errorCount": 0
+  },
+  "schema": {
+    "eventTypes": [
+      "assistant",
+      "file-history-snapshot",
+      "queue-operation",
+      "summary",
+      "system",
+      "user"
+    ],
+    "fieldsByType": {
+      "file-history-snapshot": [
+        "isSnapshotUpdate",
+        "messageId",
+        "snapshot",
+        "type"
+      ],
+      "user": [
+        "agentId",
+        "cwd",
+        "gitBranch",
+        "isCompactSummary",
+        "isMeta",
+        "isSidechain",
+        "isVisibleInTranscriptOnly",
+        "message",
+        "parentUuid",
+        "sessionId",
+        "thinkingMetadata",
+        "timestamp",
+        "toolUseResult",
+        "type",
+        "userType",
+        "uuid",
+        "version"
+      ],
+      "system": [
+        "compactMetadata",
+        "content",
+        "cwd",
+        "gitBranch",
+        "isMeta",
+        "isSidechain",
+        "level",
+        "logicalParentUuid",
+        "parentUuid",
+        "sessionId",
+        "subtype",
+        "timestamp",
+        "type",
+        "userType",
+        "uuid",
+        "version"
+      ],
+      "assistant": [
+        "agentId",
+        "cwd",
+        "gitBranch",
+        "isApiErrorMessage",
+        "isSidechain",
+        "message",
+        "parentUuid",
+        "requestId",
+        "sessionId",
+        "timestamp",
+        "type",
+        "userType",
+        "uuid",
+        "version"
+      ],
+      "summary": [
+        "leafUuid",
+        "summary",
+        "type"
+      ],
+      "queue-operation": [
+        "content",
+        "operation",
+        "sessionId",
+        "timestamp",
+        "type"
+      ]
+    },
+    "messageContentTypes": [
+      "document",
+      "image",
+      "string",
+      "text",
+      "thinking",
+      "tool_result",
+      "tool_use"
+    ],
+    "toolNames": [
+      "AskUserQuestion",
+      "Bash",
+      "BashOutput",
+      "Edit",
+      "ExitPlanMode",
+      "Glob",
+      "Grep",
+      "KillShell",
+      "Read",
+      "Skill",
+      "Task",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "mcp__clickup__clickup_create_task_comment",
+      "mcp__clickup__clickup_get_task"
+    ],
+    "models": [
+      "<synthetic>",
+      "claude-haiku-4-5-20251001",
+      "claude-sonnet-4-5-20250929"
+    ],
+    "stopReasons": [
+      "end_turn",
+      "stop_sequence",
+      "tool_use"
+    ]
+  }
+}
